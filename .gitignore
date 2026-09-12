@@ -38,3 +38,7 @@ outputs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code (local only, never committed)
+CLAUDE.md
+.claude/
