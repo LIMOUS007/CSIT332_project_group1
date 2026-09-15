@@ -82,6 +82,10 @@ No dataset files are stored in this repository. Datasets are pulled from the
 OpenML / UCI / Kaggle links in the register; anything downloaded locally goes
 under `data/`, which is git-ignored.
 
+## Reflection — dataset selection
+
+The “Binary target, or a target with a stated binarisation rule” criterion was the hardest to apply because, for many datasets, there were multiple possible target columns and several ways in which a target could be binarised. We had to examine the dataset as a whole to determine which column would be the most suitable target and then decide on an appropriate binarisation rule, and we are still not completely certain that we have chosen the best option for every dataset. To make the selection process more efficient, we first applied the basic filters, such as minimum number of rows and data format, so that we did not spend time evaluating datasets that clearly failed the requirements. Each group member then collected around 10 potential datasets, giving us approximately 40 candidates in total, from which we selected the 20 that we found most suitable and interesting for further consideration. Thus, around 20 datasets were rejected during the selection process, primarily because we chose to focus on the candidates that were most relevant and interesting to our group.
+
 ## Repository Structure
 
 - `docs/` — project documentation
