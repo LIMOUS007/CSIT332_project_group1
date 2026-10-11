@@ -12,12 +12,7 @@ venv/
 env/
 .conda/
 
-# Data (nothing under data/ is ever committed - use the links in docs/dataset_register.md)
-data/
-*.arff
-*.parquet
-*.h5
-*.hdf5
+
 
 # Model weights / caches
 *.pkl
