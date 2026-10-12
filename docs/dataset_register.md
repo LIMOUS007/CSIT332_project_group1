@@ -19,7 +19,7 @@ The datasets are evaluated based on:
 - Columns with more than **30% missing** are dropped during preparation.
 - **Class prevalence** is the positive-class fraction after applying the binarisation rule.
 - **Missingness** is measured after sentinel values (`-1`, `?`, `unknown`, etc.) are recoded to missing where one exists.
-- Datasets are **not** committed to this repository — use the source links.
+- Raw datasets are **not** committed to this repository — use the source links. Prepared datasets are rebuilt by the scripts in `prep/`; only their frozen split files (`data/<name>_split.json`) are committed. Cleaning decisions are in `docs/cleaning_decisions.md`.
 
 ## Register
 

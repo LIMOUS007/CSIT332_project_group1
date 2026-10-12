@@ -78,9 +78,12 @@ Dataset pool: 20 candidates profiled so far, target ~40. The full register with
 source links, target/binarisation rules and quality flags is in
 [`docs/dataset_register.md`](docs/dataset_register.md).
 
-No dataset files are stored in this repository. Datasets are pulled from the
-OpenML / UCI / Kaggle links in the register; anything downloaded locally goes
-under `data/`, which is git-ignored.
+Raw datasets are not stored in this repository; they are pulled from the
+OpenML / UCI / Kaggle links in the register. Each prepared dataset is rebuilt by
+its script in `prep/`. The clean CSVs are too large for GitHub and stay local;
+only the frozen split files (`data/<name>_split.json`) are committed. Cleaning
+decisions are recorded in
+[`docs/cleaning_decisions.md`](docs/cleaning_decisions.md).
 
 ## Reflection — dataset selection
 
@@ -90,8 +93,10 @@ The “Binary target, or a target with a stated binarisation rule” criterion w
 
 - `docs/` — project documentation
   - `dataset_register.md` — candidate dataset table with sources and caveats
-  - `ML Project.xlsx` — spreadsheet the register was built from
-- `data/` — local copies of datasets (git-ignored, nothing is committed)
+- `prep/` — one preparation script per dataset (`prepare_<name>.py`)
+- `data/` — prepared datasets. `<name>_clean.csv` is git-ignored (regenerate
+  with the prep script); `<name>_split.json` (frozen 70/30 split) is committed
+- `docs/cleaning_decisions.md` — every cleaning decision, per dataset
 - `dataset_profile.py` — reusable profiler for triaging tabular datasets
   (`quick_look`, `describe_dataset`, `compare_datasets`)
 - `trying_out_openml.py` — scratch script for pulling a dataset from OpenML
@@ -104,11 +109,20 @@ Folders for source code, tests and results will be added once that work starts.
 ```bash
 git clone https://github.com/LIMOUS007/CSIT332_project_group1.git
 cd CSIT332_project_group1
-conda create -n ml-project python=3.13 numpy pandas openml -c conda-forge
+conda create -n ml-project python=3.13 numpy pandas scikit-learn openml -c conda-forge
 conda activate ml-project
 ```
 
 OpenML downloads are cached locally by the `openml` package.
+
+Regenerate a prepared dataset (writes `data/<name>_clean.csv` and
+`data/<name>_split.json`; reruns are byte-identical):
+
+```bash
+python prep/prepare_adult.py
+python prep/prepare_diabetes.py
+python prep/prepare_kick.py
+```
 
 ## Reproducibility
 
@@ -119,11 +133,12 @@ versions will be added once the project dependencies are settled.
 
 ## Status
 
-Current stage: **Dataset selection**
+Current stage: **Data preparation (Week 2)**
 
 - [x] 20 candidate datasets profiled and recorded in the dataset register
 - [ ] Register extended toward ~40 datasets varied in imbalance, dimensionality and separability
 - [ ] Pre-registration of truth-arm thresholds
-- [ ] Frozen 70 / 30 split per dataset
+- [ ] Frozen 70 / 30 split per dataset — 3 done (Adult, Diabetes, Kick; see
+      [`docs/cleaning_decisions.md`](docs/cleaning_decisions.md))
 - [ ] Subsample generator (`dataset_id`, `n_sub`, `replicate_id`)
 - [ ] Truth arm run + learning-curve check
