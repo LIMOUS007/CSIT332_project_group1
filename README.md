@@ -97,10 +97,6 @@ The “Binary target, or a target with a stated binarisation rule” criterion w
 - `data/` — prepared datasets. `<name>_clean.csv` is git-ignored (regenerate
   with the prep script); `<name>_split.json` (frozen 70/30 split) is committed
 - `docs/cleaning_decisions.md` — every cleaning decision, per dataset
-- `dataset_profile.py` — reusable profiler for triaging tabular datasets
-  (`quick_look`, `describe_dataset`, `compare_datasets`)
-- `trying_out_openml.py` — scratch script for pulling a dataset from OpenML
-  and printing a column summary
 
 Folders for source code, tests and results will be added once that work starts.
 
