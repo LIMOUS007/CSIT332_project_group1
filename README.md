@@ -122,6 +122,8 @@ Regenerate a prepared dataset (writes `data/<name>_clean.csv` and
 python prep/prepare_adult.py
 python prep/prepare_diabetes.py
 python prep/prepare_kick.py
+python prep/prepare_bank.py
+python prep/prepare_loan.py
 ```
 
 ## Reproducibility
@@ -138,7 +140,7 @@ Current stage: **Data preparation (Week 2)**
 - [x] 20 candidate datasets profiled and recorded in the dataset register
 - [ ] Register extended toward ~40 datasets varied in imbalance, dimensionality and separability
 - [ ] Pre-registration of truth-arm thresholds
-- [ ] Frozen 70 / 30 split per dataset — 3 done (Adult, Diabetes, Kick; see
+- [ ] Frozen 70 / 30 split per dataset — 5 done (Adult, Diabetes, Kick, Bank, Loan; see
       [`docs/cleaning_decisions.md`](docs/cleaning_decisions.md))
 - [ ] Subsample generator (`dataset_id`, `n_sub`, `replicate_id`)
 - [ ] Truth arm run + learning-curve check
