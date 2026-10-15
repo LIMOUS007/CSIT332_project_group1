@@ -34,6 +34,7 @@ All scripts follow the same steps, in this order:
 | Adult / Census Income | 1590 | Sheikh Mohsin | 48,842 | 96 | 0.2393 | 34,189 / 14,653 | 332 |
 | Diabetes 130-US Hospitals | 4541 | Soummil Goel | 101,766 | 136 | 0.1116 | 71,236 / 30,530 | 42 |
 | Don't Get Kicked | 41162 | Soummil Goel | 72,983 | 180 | 0.1230 | 51,088 / 21,895 | 42 |
+| Bank Marketing | 1461 | <Your Name> | 45,211 | 36 | 0.1170 | 31,647 / 13,564 | 332 |
 
 ---
 
@@ -106,3 +107,14 @@ All scripts follow the same steps, in this order:
 - **Caveats:**
   - The register lists 30 features; OpenML ships 32 predictors (the extra two are `WheelTypeID` and `VehYear`).
   - Some `MMR*` price columns contain 0, which is likely a "price unknown" sentinel in the original Kaggle data. These are left as-is (not recoded) and flagged here.
+
+---
+
+## Bank Marketing (OpenML 1461), prepared by Priyansha Arora
+
+**Script:** `prep/prepare_bank.py`
+
+- **Target:** Converted term deposit subscription (`Class == '2'`) -> 1, else 0. Prevalence 0.1170 (5,289 of 45,211).
+- **Missing values:** Replaced `unknown` and `?` sentinels with NaN. Imputed numerical columns with median and categorical with mode. No columns exceeded 30% missing, so none were dropped.
+- **Categoricals:** One-hot encoded categorical features using `pd.get_dummies(drop_first=True)`.
+- **Final:** 45,211 rows, 36 standardized features (f1..fk), binary target y in {0, 1}, stratified 70/30 split with seed 332. Pool 31,647 / test 13,564, both at prevalence 0.1170.
