@@ -35,7 +35,6 @@ All scripts follow the same steps, in this order:
 | Diabetes 130-US Hospitals | 4541 | Soummil Goel | 101,766 | 136 | 0.1116 | 71,236 / 30,530 | 42 |
 | Don't Get Kicked | 41162 | Soummil Goel | 72,983 | 180 | 0.1230 | 51,088 / 21,895 | 42 |
 | Bank Marketing | 1461 | Priyansha Arora | 45,211 | 39 | 0.1170 | 31,647 / 13,564 | 332 |
-| Loan Approval Status | 46526 | Soummil Goel | 45,000 | 19 | 0.2222 | 31,500 / 13,500 | 42 |
 
 ---
 
@@ -120,20 +119,3 @@ All scripts follow the same steps, in this order:
 - **Missing values:** Replaced `unknown` and `?` sentinels with NaN, except `V16` (`poutcome`), where `unknown` means "not in a previous campaign" and is kept as a real level. `V9` (`contact`, 28.8% unknown) gets its own `Missing` category instead of the mode, since the unknowns cluster in the early calls. Imputed numerical columns with median and categorical with mode. No columns exceeded 30% missing, so none were dropped.
 - **Categoricals:** One-hot encoded categorical features using `pd.get_dummies(drop_first=True)`.
 - **Final:** 45,211 rows, 39 standardized features (f1..fk), binary target y in {0, 1}, stratified 70/30 split with seed 332. Pool 31,647 / test 13,564, both at prevalence 0.1170.
-
----
-
-## Loan Approval Status (OpenML 46526), prepared by Soummil Goel
-
-**Script:** `prep/prepare_loan.py`
-
-- **Target:** `loan_status == 'loan_approved'` -> 1; `loan_rejected` -> 0. Prevalence 0.2222 (10,000 of 45,000).
-- **Missing values:** none in the file. Rows dropped: 0.
-- **Categoricals:** already one-hot encoded on OpenML, with **every** level kept (each group sums to 1, checked by the script). To match `drop_first=True` elsewhere, the first level of each group is dropped: `defaults_no`, `gender_female`, `home_mortgage`, `intent_debtconsolidation`.
-  - `person_education` is an ordinal 0-4 code and is kept numeric.
-- **Zero-variance columns:** none.
-- **Final:** 45,000 rows, 19 features (9 numeric + 10 dummies), prevalence 0.2222, seed 42. Pool 31,500 / test 13,500, both at prevalence 0.2222.
-- **Caveats:**
-  - Impossible values kept as-is and flagged: `person_age` > 100 in 7 rows (max 144), `person_emp_exp` > 60 in 10 rows (max 125).
-  - The round class counts (35,000 / 10,000) suggest the OpenML copy is resampled or partly synthetic rather than raw loan records.
-- **Licence:** CC BY 4.0 (OpenML 46526).
