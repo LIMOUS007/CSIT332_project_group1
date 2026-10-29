@@ -116,6 +116,20 @@ prevalence = y.mean()
 print(f"      Positive class (<30) : {y.sum():,}  |  Prevalence : {prevalence:.4f}")
 assert abs(prevalence - 0.1116) < 0.001, f"Unexpected prevalence {prevalence:.4f}"
 
+# Frozen 70/30 stratified split. It only needs y, so it comes first: every
+# later step that learns from the data (missing-column cap, imputation fills,
+# constant columns, standardisation) uses pool rows only, so the frozen test
+# rows never influence the cleaned values. No rows are dropped after this.
+print(f"\n      Computing frozen 70/30 stratified split (seed={SEED}) ...")
+pool_idx, test_idx = train_test_split(
+    np.arange(len(y)), test_size=TEST_SIZE, random_state=SEED, stratify=y,
+)
+pool_prev = y.iloc[pool_idx].mean()
+test_prev = y.iloc[test_idx].mean()
+print(f"      Pool size : {len(pool_idx):,}  |  prevalence = {pool_prev:.4f}")
+print(f"      Test size : {len(test_idx):,}  |  prevalence = {test_prev:.4f}")
+assert abs(pool_prev - prevalence) < 0.005 and abs(test_prev - prevalence) < 0.005
+
 # ---------------------------------------------------------------------------
 # 4. Drop identifier columns
 # ---------------------------------------------------------------------------
@@ -134,9 +148,9 @@ X["gender"] = X["gender"].replace("Unknown/Invalid", np.nan)
 for c in NONE_AS_MISSING:
     X[c] = X[c].replace("None", np.nan)
 
-miss_frac = X.isna().mean()
+miss_frac = X.iloc[pool_idx].isna().mean()
 high_miss = miss_frac[miss_frac > MISSING_CAP].sort_values(ascending=False)
-print("      Dropping (>30% missing):")
+print("      Dropping (>30% missing in the pool):")
 print(high_miss.apply(lambda v: f"{v:.2%}").to_string())
 X = X.drop(columns=high_miss.index.tolist())
 
@@ -158,7 +172,8 @@ for col in X.columns:
     n = X[col].isna().sum()
     if n == 0:
         continue
-    fill = X[col].median() if col in num_cols else X[col].mode()[0]
+    pool_col = X[col].iloc[pool_idx]
+    fill = pool_col.median() if col in num_cols else pool_col.mode()[0]
     X[col] = X[col].fillna(fill)
     print(f"      Imputed {col:30s} with {fill!r} : {n} values")
     imputed += n
@@ -184,16 +199,17 @@ print(f"      Columns: {n_before} -> {n_after}  "
 # ---------------------------------------------------------------------------
 print("\n[6/9] Casting to float and removing zero-variance columns ...")
 X = X.astype(float)
-stds = X.std(ddof=0)
+stds = X.iloc[pool_idx].std(ddof=0)
 const_cols = stds[stds == 0].index.tolist()
-print(f"      Dropping constant columns: {const_cols or 'none'}")
+print(f"      Dropping columns constant in the pool: {const_cols or 'none'}")
 X = X.drop(columns=const_cols)
 
 # ---------------------------------------------------------------------------
 # 8. Standardise (population std) and rename columns f1..fk
 # ---------------------------------------------------------------------------
-print("\n[7/9] Standardising (mu=0, sigma=1) and renaming columns ...")
-X = (X - X.mean()) / X.std(ddof=0)
+print("\n[7/9] Standardising with pool mean / std and renaming columns ...")
+pool_X = X.iloc[pool_idx]
+X = (X - pool_X.mean()) / pool_X.std(ddof=0)
 k = X.shape[1]
 X.columns = [f"f{i}" for i in range(1, k + 1)]
 print(f"      Feature count k = {k}  ->  columns f1 ... f{k}")
@@ -205,9 +221,10 @@ print("\n[8/9] Running sanity checks ...")
 assert X.isna().sum().sum() == 0, "NaN values remain"
 assert set(y.unique()) == {0, 1}, f"Unexpected y values: {y.unique()}"
 assert all(X.dtypes == np.float64), "Non-float columns remain"
-assert X.mean().abs().max() < 1e-6, "Mean not ~0"
-assert (X.std(ddof=0) - 1).abs().max() < 1e-6, "Std not ~1"
-print("      OK  no NaN | y in {0,1} | all float64 | mean 0, std 1")
+assert np.isfinite(X.to_numpy()).all(), "Non-finite values remain"
+assert X.iloc[pool_idx].mean().abs().max() < 1e-6, "Pool mean not ~0"
+assert (X.iloc[pool_idx].std(ddof=0) - 1).abs().max() < 1e-6, "Pool std not ~1"
+print("      OK  no NaN | y in {0,1} | all float64 | pool mean 0, std 1")
 
 df_out = X.copy()
 df_out["y"] = y.values
@@ -216,18 +233,9 @@ csv_md5 = hashlib.md5(OUT_CSV.read_bytes()).hexdigest()
 print(f"      Saved : {OUT_CSV}  {df_out.shape}  MD5 {csv_md5}")
 
 # ---------------------------------------------------------------------------
-# 10. Frozen 70/30 stratified split
+# 10. Save the frozen split (computed in step 3)
 # ---------------------------------------------------------------------------
-print(f"\n[9/9] Computing frozen 70/30 stratified split (seed={SEED}) ...")
-pool_idx, test_idx = train_test_split(
-    np.arange(len(y)), test_size=TEST_SIZE, random_state=SEED, stratify=y,
-)
-pool_prev = y.iloc[pool_idx].mean()
-test_prev = y.iloc[test_idx].mean()
-print(f"      Pool size : {len(pool_idx):,}  |  prevalence = {pool_prev:.4f}")
-print(f"      Test size : {len(test_idx):,}  |  prevalence = {test_prev:.4f}")
-assert abs(pool_prev - prevalence) < 0.005 and abs(test_prev - prevalence) < 0.005
-
+print("\n[9/9] Saving frozen 70/30 split ...")
 split_record = {
     "dataset"   : NAME,
     "openml_id" : OPENML_ID,

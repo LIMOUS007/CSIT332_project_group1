@@ -40,7 +40,8 @@ What we own: **datasets, the frozen split, the subsample generator, the truth ar
 About 40 large real datasets, chosen to vary deliberately in class imbalance,
 dimensionality and separability. Each gets a written binarisation rule. The
 register so far (20 profiled) is in
-[`docs/dataset_register.md`](docs/dataset_register.md).
+[`docs/dataset_register.xlsx`](docs/dataset_register.xlsx) (table only), built
+from [`docs/dataset_register.md`](docs/dataset_register.md) (table plus notes).
 
 ### 2. The frozen split
 Each dataset is divided 70 / 30 once, permanently. The 30% is the truth test
@@ -93,6 +94,8 @@ The “Binary target, or a target with a stated binarisation rule” criterion w
 
 - `docs/` — project documentation
   - `dataset_register.md` — candidate dataset table with sources and caveats
+  - `dataset_register.xlsx` — the register table alone, for submission
+    (rebuild with `python docs/build_register_xlsx.py` after editing the `.md`)
 - `prep/` — one preparation script per dataset (`prepare_<name>.py`)
 - `data/` — prepared datasets. `<name>_clean.csv` is git-ignored (regenerate
   with the prep script); `<name>_split.json` (frozen 70/30 split) is committed
@@ -105,7 +108,7 @@ Folders for source code, tests and results will be added once that work starts.
 ```bash
 git clone https://github.com/LIMOUS007/CSIT332_project_group1.git
 cd CSIT332_project_group1
-conda create -n ml-project python=3.13 numpy pandas scikit-learn openml -c conda-forge
+conda create -n ml-project python=3.13 numpy pandas scikit-learn openml openpyxl -c conda-forge
 conda activate ml-project
 ```
 

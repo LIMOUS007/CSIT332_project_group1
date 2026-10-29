@@ -2,8 +2,9 @@
 
 Every dataset is prepared by its own script in `prep/`, which writes:
 
-- `data/<name>_clean.csv` - features `f1..fk`, all standardised to mean 0 / SD 1
-  (population SD), plus the binary target `y`. **Not committed** (too large for
+- `data/<name>_clean.csv` - features `f1..fk`, standardised with the study
+  pool's mean and population SD (so pool rows have mean 0 / SD 1 and test rows
+  are close to it), plus the binary target `y`. **Not committed** (too large for
   GitHub; regenerate by running the script).
 - `data/<name>_split.json` - the frozen, stratified 70/30 split stored as row
   indices into the clean CSV, plus the CSV's MD5. **Committed**, so the split is
@@ -18,21 +19,26 @@ All scripts follow the same steps, in this order:
 
 1. Download from OpenML.
 2. Binarise the target; assert the prevalence matches the register.
-3. Drop identifier and duplicate columns.
-4. Recode sentinels (`?`, etc.) to missing; drop columns with **>30% missing**.
-5. Impute the rest: numeric -> median, categorical -> mode (exceptions noted per dataset). No rows are dropped.
-6. One-hot encode categoricals with `drop_first=True`.
-7. Cast to float, drop zero-variance columns.
-8. Standardise (`ddof=0`) and rename columns `f1..fk`.
-9. Sanity checks (no NaN, `y` in {0,1}, all float64, mean 0 / SD 1), then save the CSV.
-10. Stratified 70/30 split; assert pool and test prevalence are within 0.5 pp of overall.
+3. Stratified 70/30 split; assert pool and test prevalence are within 0.5 pp of overall.
+   The split needs only `y`, so it comes before anything is learned from the
+   features. No rows are dropped after this, so the indices stay valid.
+4. Drop identifier and duplicate columns.
+5. Recode sentinels (`?`, etc.) to missing; drop columns with **>30% missing in the pool**.
+6. Impute the rest with the **pool** median (numeric) or mode (categorical) (exceptions noted per dataset). No rows are dropped.
+7. One-hot encode categoricals with `drop_first=True` (Kick: top-20 levels counted on the pool).
+8. Cast to float, drop columns with zero variance **in the pool**.
+9. Standardise with the **pool** mean and SD (`ddof=0`) and rename columns `f1..fk`.
+10. Sanity checks (no NaN or inf, `y` in {0,1}, all float64, pool mean 0 / SD 1), then save the CSV and the split.
+
+Every step that learns from the data (steps 5, 6, 7, 8, 9) uses pool rows only,
+so the frozen 30% test rows never influence the cleaned values.
 
 ## Profile table
 
 | Dataset | OpenML ID | Prepared by | Final rows | Final features | Prevalence | Pool / test | Split seed |
 |---|---|---|---|---|---|---|---|
 | Adult / Census Income | 1590 | Sheikh Mohsin | 48,842 | 96 | 0.2393 | 34,189 / 14,653 | 332 |
-| Diabetes 130-US Hospitals | 4541 | Soummil Goel | 101,766 | 136 | 0.1116 | 71,236 / 30,530 | 42 |
+| Diabetes 130-US Hospitals | 4541 | Soummil Goel | 101,766 | 133 | 0.1116 | 71,236 / 30,530 | 42 |
 | Don't Get Kicked | 41162 | Soummil Goel | 72,983 | 180 | 0.1230 | 51,088 / 21,895 | 42 |
 | Bank Marketing | 1461 | Priyansha Arora | 45,211 | 39 | 0.1170 | 31,647 / 13,564 | 332 |
 | Covertype | 1596 | Tejas Bhardwaj | 581,012 | 54 | 0.4876 | 406,708 / 174,304 | 332 |
@@ -72,7 +78,8 @@ All scripts follow the same steps, in this order:
 - **Categoricals:** 33 columns one-hot encoded -> 127 dummy columns.
 - **Dropped columns:** `encounter_id`, `patient_nbr` (identifiers); the five >30%-missing columns above.
 - **Zero-variance columns:** `examide` and `citoglipton` have a single value (`No`), so they produce no dummy columns.
-- **Final:** 101,766 rows, 136 features (9 numeric + 127 dummies), prevalence 0.1116, seed 42. Pool 71,236 / test 30,530, both at prevalence 0.1116.
+- **Constant in the pool:** `admission_source_id_13`, `acetohexamide_Steady` and `troglitazone_Steady` are non-zero only in test rows, so they carry no information for training and are dropped.
+- **Final:** 101,766 rows, 133 features (9 numeric + 124 dummies), prevalence 0.1116, seed 42. Pool 71,236 / test 30,530, both at prevalence 0.1116.
 - **Caveats:**
   - Rows are encounters, not patients: 71,518 unique patients across 101,766 rows. The same patient can appear in both the pool and the test set. We kept every row to stay consistent with the register's shipped row count.
   - `discharge_disposition_id` includes "expired" codes. Those patients cannot be readmitted, so they are always `y = 0`. This is known at discharge, so it is not leakage, but it makes some rows trivially predictable.

@@ -20,6 +20,13 @@ df['y'] = df[target_col].astype(str).str.lower().str.strip().isin(['yes', '2']).
 if target_col != 'y':
     df = df.drop(columns=[target_col])
 
+# Frozen stratified 70/30 split. It only needs y, so it comes first: every later
+# step that learns from the data (missing-column cap, imputation, zero-variance
+# columns, standardisation) uses pool rows only, so the frozen test rows never
+# influence the cleaned values. No rows are dropped after this.
+indices = np.arange(len(df))
+train_idx, test_idx = train_test_split(indices, test_size=0.30, random_state=SEED, stratify=df['y'].values)
+
 # Drop V12 (duration): call length is only known after the call ends, so it leaks the outcome
 df = df.drop(columns=['V12'])
 
@@ -32,21 +39,21 @@ df['V16'] = poutcome
 # V9 (contact) unknowns cluster in the early calls, so keep them as their own category
 df['V9'] = df['V9'].astype(object).fillna('Missing')
 
-# Drop columns >30% missing
-missing_pct = df.isnull().mean()
+# Drop columns >30% missing in the pool
+missing_pct = df.iloc[train_idx].isnull().mean()
 cols_to_drop = missing_pct[missing_pct > 0.30].index.tolist()
 if cols_to_drop:
     df = df.drop(columns=cols_to_drop)
 
-# Impute remaining missing values
+# Impute remaining missing values with pool median / mode
 for col in df.columns:
     if col == 'y':
         continue
     if df[col].isnull().sum() > 0:
         if pd.api.types.is_numeric_dtype(df[col]):
-            df[col] = df[col].fillna(df[col].median())
+            df[col] = df[col].fillna(df[col].iloc[train_idx].median())
         else:
-            df[col] = df[col].fillna(df[col].mode()[0])
+            df[col] = df[col].fillna(df[col].iloc[train_idx].mode()[0])
 
 # 3. Categorical encoding
 cat_cols = [c for c in df.select_dtypes(include=['object', 'category']).columns if c != 'y']
@@ -57,14 +64,20 @@ if cat_cols:
 X = df.drop(columns=['y']).astype(float)
 y = df['y'].values
 
-# Remove zero variance columns
-variances = X.var(ddof=0)
+# Remove columns with zero variance in the pool
+variances = X.iloc[train_idx].var(ddof=0)
 zero_var = variances[variances == 0].index
 if len(zero_var) > 0:
     X = X.drop(columns=zero_var)
 
-X_scaled = (X - X.mean(axis=0)) / X.std(axis=0, ddof=0)
+# Standardise with pool mean / std
+X_pool = X.iloc[train_idx]
+X_scaled = (X - X_pool.mean(axis=0)) / X_pool.std(axis=0, ddof=0)
 X_scaled.columns = [f"f{i+1}" for i in range(X_scaled.shape[1])]
+
+assert np.isfinite(X_scaled.to_numpy()).all(), "Non-finite values remain"
+assert X_scaled.iloc[train_idx].mean().abs().max() < 1e-6, "Pool mean not ~0"
+assert (X_scaled.iloc[train_idx].std(ddof=0) - 1).abs().max() < 1e-6, "Pool std not ~1"
 
 clean_df = X_scaled.copy()
 clean_df['y'] = y
@@ -74,11 +87,8 @@ os.makedirs("data", exist_ok=True)
 csv_path = f"data/{NAME}_clean.csv"
 clean_df.to_csv(csv_path, index=False)
 
-# 5. Stratified 70/30 Split
-indices = np.arange(len(clean_df))
-train_idx, test_idx = train_test_split(indices, test_size=0.30, random_state=SEED, stratify=y)
-
-md5 = hashlib.md5(open(csv_path, 'rb').read()).hexdigest()
+# 5. Save the stratified 70/30 split (computed right after target encoding)
+md5 =hashlib.md5(open(csv_path, 'rb').read()).hexdigest()
 split_data = {
     "name": NAME,
     "seed": SEED,

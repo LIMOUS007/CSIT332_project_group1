@@ -99,6 +99,17 @@ def main():
     print(f"Positive class count: {int(y.sum()):,}")
     print(f"Positive prevalence: {prevalence:.4f}")
 
+    # Freeze a stratified 70/30 split using row indices. It only needs y, so
+    # it comes first: the zero-variance check and standardisation below use
+    # pool rows only, so the frozen test rows never influence the cleaned
+    # values. No rows are dropped after this.
+    train_idx, test_idx = train_test_split(
+        np.arange(len(y)),
+        test_size=TEST_SIZE,
+        random_state=SEED,
+        stratify=y,
+    )
+
     # 3. Confirm features are numeric and contain no missing values.
     X = X_raw.copy()
 
@@ -116,17 +127,17 @@ def main():
 
     X = X.astype(np.float64)
 
-    # 4. Remove any zero-variance features.
-    stds = X.std(ddof=0)
+    # 4. Remove any features with zero variance in the pool.
+    stds = X.iloc[train_idx].std(ddof=0)
     constant_cols = stds[stds == 0].index.tolist()
 
     if constant_cols:
         print(f"Dropping zero-variance columns: {constant_cols}")
         X = X.drop(columns=constant_cols)
 
-    # 5. Standardise using population standard deviation.
-    means = X.mean()
-    stds = X.std(ddof=0)
+    # 5. Standardise using the pool mean and population standard deviation.
+    means = X.iloc[train_idx].mean()
+    stds = X.iloc[train_idx].std(ddof=0)
 
     assert (stds > 0).all(), "A zero-variance feature remains."
     X = (X - means) / stds
@@ -143,8 +154,8 @@ def main():
     assert X.columns.tolist() == [
         f"f{i + 1}" for i in range(X.shape[1])
     ]
-    assert X.mean().abs().max() < 1e-6
-    assert (X.std(ddof=0) - 1).abs().max() < 1e-6
+    assert X.iloc[train_idx].mean().abs().max() < 1e-6
+    assert (X.iloc[train_idx].std(ddof=0) - 1).abs().max() < 1e-6
 
     # 7. Save clean data. CSVs are intended to remain local.
     clean_df = X.copy()
@@ -153,14 +164,7 @@ def main():
 
     md5 = hashlib.md5(OUT_CSV.read_bytes()).hexdigest()
 
-    # 8. Freeze a stratified 70/30 split using row indices.
-    train_idx, test_idx = train_test_split(
-        np.arange(len(y)),
-        test_size=TEST_SIZE,
-        random_state=SEED,
-        stratify=y,
-    )
-
+    # 8. Check and save the frozen split (computed after step 2).
     train_prevalence = float(y[train_idx].mean())
     test_prevalence = float(y[test_idx].mean())
 
